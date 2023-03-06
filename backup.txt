@@ -1,0 +1,156 @@
+#!/usr/bin/bash
+sudo yum install -y yum-utils shadow-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+sudo yum -y install vault
+vault -version
+vault server -dev
+export VAULT_ADDR='http://127.0.0.1:8200'
+echo "6WwkzXOtVgAQ+UCnNkMB30E5LsX51kbrvSI8XotRk4E=" > unseal.key
+export VAULT_ROOT_TOKEN_ID=hvs.q3VoJ1UKOpXWCeT070nwMsUX
+vault status
+
+#create secrets key=value based
+vault kv put secret/hello myname=jayakumar
+vault kv get secret/hello
+vault kv delete secret/hello
+
+mkdir -p vault/data/
+cd vault/data/
+vi config.hcl
+ui=true
+disable_mlock = true
+
+
+storage "file"{
+ path    = "./vault/data"
+ node_id = "node1"
+}
+
+listener "tcp" {
+ address     = "0.0.0.0:8200"
+ tls_disable = "true"
+}
+
+api_addr = "http://0.0.0.0:8200"
+cluster_addr = "https://0.0.0.0:8201"
+
+----
+vault server -config=config.hcl 
+sudo netstat -tulpn
+
+Dockerfile
+--------------
+FROM vault:latest
+MAINTAINER jayakumar
+RUN apt-get update -y
+RUN mkdir -p /vault/logs && mkdir -p /vault/file
+RUN mkdir -p /vault/config
+RUN chown -R vault:vault /vault
+VOLUME /vault/logs
+VOLUME /vault/file
+EXPOSE 8200
+
+docker compose
+--------------
+version: '2'
+services:
+  vault:
+    image: vault:latest
+    container_name: vault
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./volumes/logs:/vault/logs
+      - ./volumes/file:/vault/file
+      - ./volumes/config:/vault/config
+    ports:
+      - "8200:8200"
+    command: vault server -config=/vault/config/vault.hcl
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: Hashicorp-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: Vault
+        template:
+    metadata:
+      labels:
+        app: Vault 
+    spec:
+      containers:
+        - name: Vault
+          image: vault:latest
+         ports:
+       - containerPort: 8200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: Vault
+  ports:
+    - name: Vault
+      protocol: TCP
+      port: 8200
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
